@@ -2,7 +2,7 @@
 
 const ConversationV1 = require('watson-developer-cloud/conversation/v1');
 const Foursquare = require('foursquarevenues');
- 
+
 class HealthBot {
 
     /**
@@ -30,7 +30,7 @@ class HealthBot {
         }
     }
 
-     /**
+    /**
      * Initializes the bot, including the required datastores.
      */
     init() {
@@ -63,12 +63,12 @@ class HealthBot {
                 return this.updateUserWithWatsonConversationContext(user, conversationResponse.context);
             })
             .then((u) => {
-                return Promise.resolve({conversationResponse: conversationResponse, text:reply});
+                return Promise.resolve({ conversationResponse: conversationResponse, text: reply });
             })
             .catch((error) => {
                 console.log(`Error: ${JSON.stringify(error,null,2)}`);
                 let reply = "Sorry, something went wrong!";
-                return Promise.resolve({conversationResponse: conversationResponse, text:reply});
+                return Promise.resolve({ conversationResponse: conversationResponse, text: reply });
             });
     }
 
@@ -82,21 +82,20 @@ class HealthBot {
     sendRequestToWatsonConversation(message, conversationContext) {
         return new Promise((resolve, reject) => {
             var conversationRequest = {
-                input: {text: message},
+                input: { text: message },
                 context: conversationContext,
                 workspace_id: this.conversationWorkspaceId,
             };
             this.conversationService.message(conversationRequest, (error, response) => {
                 if (error) {
                     reject(error);
-                }
-                else {
+                } else {
                     resolve(response);
                 }
             });
         });
     }
-    
+
     /**
      * Takes the response from Watson Conversation, performs any additional steps
      * that may be required, and returns the reply that should be sent to the user.
@@ -118,11 +117,10 @@ class HealthBot {
                 // In some cases we need to take special steps and return a customized response
                 // for an action - for example, lookup and return a list of doctors (handleFindDoctorByLocationMessage). 
                 // In other cases we'll just return the response configured in the Watson Conversation dialog (handleDefaultMessage).
-                const action = conversationResponse.context.action;
+                const action = conversationResponse.context["action"];
                 if (action == "findDoctorByLocation") {
                     return this.handleFindDoctorByLocationMessage(conversationResponse);
-                }
-                else {
+                } else {
                     return this.handleDefaultMessage(conversationResponse);
                 }
             })
@@ -161,7 +159,7 @@ class HealthBot {
      * @returns {Promise.<string|error>} - The reply to send to the user if fulfilled, or an error if rejected
      */
     handleFindDoctorByLocationMessage(conversationResponse) {
-        if (! this.foursquareClient) {
+        if (!this.foursquareClient) {
             return Promise.resolve('Please configure Foursquare.');
         }
         // Get the specialty from the context to be used in the query to Foursquare
@@ -172,7 +170,7 @@ class HealthBot {
         query += 'Doctor';
         // Get the location entered by the user to be used in the query
         let location = '';
-        for (let i=0; i<conversationResponse.entities.length; i++) {
+        for (let i = 0; i < conversationResponse.entities.length; i++) {
             if (conversationResponse.entities[0].entity == 'sys-location') {
                 if (location.length > 0) {
                     location += ' ';
@@ -187,14 +185,16 @@ class HealthBot {
                 "radius": 5000
             };
             this.foursquareClient.getVenues(params, function(error, venues) {
+
+                console.log('params111111111', venues.response.venues);
+
                 let reply = '';
                 if (error) {
                     console.log(error);
                     reply = 'Sorry, I couldn\'t find any doctors near you.';
-                }
-                else {
+                } else {
                     reply = 'Here is what I found:\n';
-                    for (var i=0; i<venues.response.venues.length; i++) {
+                    for (var i = 0; i < venues.response.venues.length; i++) {
                         if (reply.length > 0) {
                             reply += '\n';
                         }
@@ -243,8 +243,7 @@ class HealthBot {
                     conversationResponse.context.conversationDocId = conversationDoc._id;
                     return Promise.resolve(conversationDoc._id);
                 });
-        }
-        else {
+        } else {
             return Promise.resolve(conversationResponse.context.conversationDocId);
         }
     }
@@ -257,16 +256,15 @@ class HealthBot {
      * @param {string} reply - The reply sent to the user
      */
     logDialog(conversationDocId, name, message, reply) {
-        if (! conversationDocId) {
+        if (!conversationDocId) {
             return;
         }
         // queue up dialog to be saved asynchronously
-        this.dialogQueue.push({conversationDocId: conversationDocId, name: name, message: message, reply: reply, date: Date.now()});
+        this.dialogQueue.push({ conversationDocId: conversationDocId, name: name, message: message, reply: reply, date: Date.now() });
         if (this.dialogQueue.length > 1) {
             return;
-        }
-        else {
-            setTimeout( () => {
+        } else {
+            setTimeout(() => {
                 this.saveQueuedDialog();
             }, 1);
         }
@@ -277,7 +275,7 @@ class HealthBot {
      */
     saveQueuedDialog() {
         let dialog = this.dialogQueue.shift();
-        let dialogDoc = {name:dialog.name, message:dialog.message, reply:dialog.reply, date:dialog.date};
+        let dialogDoc = { name: dialog.name, message: dialog.message, reply: dialog.reply, date: dialog.date };
         this.dialogStore.addDialog(dialog.conversationDocId, dialogDoc)
             .then(() => {
                 if (this.dialogQueue.length > 0) {
